@@ -1,0 +1,176 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: financetracker
+          POSTGRES_USER: financetracker
+          POSTGRES_PASSWORD: financetracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U financetracker"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build jar
+        working-directory: backend
+        run: mvn -B clean package -DskipTests
+
+      # No unit tests exist yet, so this boots the real jar against a real Postgres and
+      # exercises the main read paths through auth — the same paths that broke in practice
+      # (a bad enum comparison, a lazy-loading proxy read outside its session). Cheap
+      # insurance against those classes of bug recurring.
+      - name: Smoke test the built jar
+        working-directory: backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/financetracker
+          SPRING_DATASOURCE_USERNAME: financetracker
+          SPRING_DATASOURCE_PASSWORD: financetracker
+          JWT_SECRET: ci-smoke-test-secret-please-ignore-32-chars-min
+          APP_ADMIN_USERNAME: ci-admin
+          APP_ADMIN_PASSWORD: ci-admin-password
+        run: |
+          set -e
+          java -jar target/finance-tracker-backend.jar &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+
+          echo "Waiting for the app to become healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Up after ${i} attempt(s)."
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "Backend never became healthy"; exit 1
+            fi
+            sleep 2
+          done
+
+          TOKEN=$(curl -sf -X POST http://localhost:8080/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"ci-admin","password":"ci-admin-password"}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+          echo "Checking categories, transactions and dashboard endpoints..."
+          curl -sf http://localhost:8080/api/categories -H "Authorization: Bearer $TOKEN" > /dev/null
+          curl -sf "http://localhost:8080/api/transactions?year=2026&month=1" -H "Authorization: Bearer $TOKEN" > /dev/null
+          curl -sf "http://localhost:8080/api/dashboard/summary?year=2026&month=1" -H "Authorization: Bearer $TOKEN" > /dev/null
+          curl -sf "http://localhost:8080/api/dashboard/trend?months=3" -H "Authorization: Bearer $TOKEN" > /dev/null
+          echo "Smoke test passed."
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - working-directory: frontend
+        run: npm run build
+
+  docker-publish:
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta-backend
+        with:
+          images: ghcr.io/${{ github.repository }}-backend
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: docker/metadata-action@v5
+        id: meta-frontend
+        with:
+          images: ghcr.io/${{ github.repository }}-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # --- Deploy -----------------------------------------------------------------
+  # Disabled until there's a server to deploy to. Once you have one:
+  #  1. Flip `if: false` below to `if: true`.
+  #  2. Add repo secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (Settings > Secrets and
+  #     variables > Actions) for a plain VPS reachable over SSH with Docker installed.
+  #  3. On that server, docker-compose.yml's `build:` entries should be swapped for
+  #     `image: ghcr.io/<owner>/<repo>-backend:latest` / `-frontend:latest` so it pulls the
+  #     images this workflow just published instead of rebuilding from source.
+  # If you deploy to a platform instead (Railway, Fly.io, Render, etc.), replace this job's
+  # steps with that platform's deploy action/CLI — the docker-publish job above already gives
+  # you versioned images to point it at.
+  deploy:
+    needs: docker-publish
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /path/to/finance-tracker
+            docker compose pull
+            docker compose up -d
