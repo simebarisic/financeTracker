@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-financetracker}
+      POSTGRES_USER: ${POSTGRES_USER:-financetracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financetracker}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-financetracker} -d ${POSTGRES_DB:-financetracker}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-financetracker}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-financetracker}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-financetracker}
+      JWT_SECRET: ${JWT_SECRET:-change-this-super-secret-key-please-override-in-production-min-32-bytes}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-1440}
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-admin}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-changeme123}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+volumes:
+  db_data:
