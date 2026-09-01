@@ -7,7 +7,14 @@ const PRESET_COLORS = [
   '#ec4899', '#3b82f6', '#14b8a6', '#64748b', '#ef4444',
 ]
 
-const emptyForm = { name: '', type: 'EXPENSE', monthlyBudget: '', color: PRESET_COLORS[0] }
+const BUDGET_GROUPS = [
+  { value: '', label: '— none —' },
+  { value: 'NEEDS', label: 'Needs (50%)' },
+  { value: 'WANTS', label: 'Wants (30%)' },
+  { value: 'SAVINGS', label: 'Savings (20%)' },
+]
+
+const emptyForm = { name: '', type: 'EXPENSE', monthlyBudget: '', budgetGroup: '', color: PRESET_COLORS[0] }
 
 export default function CategoryForm({ open, onClose, onSaved, initial }) {
   const [form, setForm] = useState(emptyForm)
@@ -21,6 +28,7 @@ export default function CategoryForm({ open, onClose, onSaved, initial }) {
         name: initial.name,
         type: initial.type,
         monthlyBudget: initial.monthlyBudget != null ? String(initial.monthlyBudget) : '',
+        budgetGroup: initial.budgetGroup || '',
         color: initial.color || PRESET_COLORS[0],
       })
     } else {
@@ -39,6 +47,7 @@ export default function CategoryForm({ open, onClose, onSaved, initial }) {
       name: form.name.trim(),
       type: form.type,
       monthlyBudget: form.type === 'EXPENSE' && form.monthlyBudget !== '' ? Number(form.monthlyBudget) : null,
+      budgetGroup: form.type === 'EXPENSE' && form.budgetGroup !== '' ? form.budgetGroup : null,
       color: form.color,
     }
 
@@ -102,6 +111,23 @@ export default function CategoryForm({ open, onClose, onSaved, initial }) {
                 value={form.monthlyBudget}
                 onChange={(e) => setForm((f) => ({ ...f, monthlyBudget: e.target.value }))}
               />
+            </div>
+          )}
+
+          {form.type === 'EXPENSE' && (
+            <div className="field">
+              <label>Budget group (optional)</label>
+              <select
+                value={form.budgetGroup}
+                onChange={(e) => setForm((f) => ({ ...f, budgetGroup: e.target.value }))}
+              >
+                {BUDGET_GROUPS.map((g) => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+              <span className="hint">
+                Used for the 50/30/20 breakdown on the Dashboard — Needs, Wants, or Savings.
+              </span>
             </div>
           )}
 

@@ -509,6 +509,38 @@ table.data-table {
   border-radius: 999px;
 }
 
+.budget-group {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-group:last-child {
+  border-bottom: none;
+}
+
+.budget-group-top {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.budget-track-group {
+  height: 8px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.budget-row-nested {
+  padding-left: 12px;
+  border-bottom: none;
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.budget-row-nested .budget-row-top {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* --- Modal --- */
 .modal-backdrop {
   position: fixed;

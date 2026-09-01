@@ -59,6 +59,7 @@ public class CategoryService {
         category.setName(request.name());
         category.setType(request.type());
         category.setMonthlyBudget(request.type() == CategoryType.EXPENSE ? request.monthlyBudget() : null);
+        category.setBudgetGroup(request.type() == CategoryType.EXPENSE ? request.budgetGroup() : null);
         category.setColor(request.color());
     }
 }

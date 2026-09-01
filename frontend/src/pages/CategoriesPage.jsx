@@ -51,6 +51,8 @@ export default function CategoriesPage() {
   const income = categories.filter((c) => c.type === 'INCOME')
   const expense = categories.filter((c) => c.type === 'EXPENSE')
 
+  const GROUP_LABELS = { NEEDS: 'Needs', WANTS: 'Wants', SAVINGS: 'Savings' }
+
   function renderGroup(title, list) {
     return (
       <div className="card" style={{ marginBottom: 16 }}>
@@ -66,6 +68,7 @@ export default function CategoriesPage() {
                 <tr>
                   <th>Category</th>
                   {title === 'Expense categories' && <th>Monthly budget</th>}
+                  {title === 'Expense categories' && <th>Group</th>}
                   <th></th>
                 </tr>
               </thead>
@@ -80,6 +83,9 @@ export default function CategoriesPage() {
                     </td>
                     {title === 'Expense categories' && (
                       <td>{c.monthlyBudget != null ? formatMoney(c.monthlyBudget) : '—'}</td>
+                    )}
+                    {title === 'Expense categories' && (
+                      <td>{c.budgetGroup ? GROUP_LABELS[c.budgetGroup] : '—'}</td>
                     )}
                     <td>
                       <div className="row-actions">

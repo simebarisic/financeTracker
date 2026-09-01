@@ -7,6 +7,7 @@ public record CategoryDto(
         String name,
         CategoryType type,
         BigDecimal monthlyBudget,
+        BudgetGroup budgetGroup,
         String color
 ) {
     public static CategoryDto from(Category category) {
@@ -15,6 +16,7 @@ public record CategoryDto(
                 category.getName(),
                 category.getType(),
                 category.getMonthlyBudget(),
+                category.getBudgetGroup(),
                 category.getColor()
         );
     }

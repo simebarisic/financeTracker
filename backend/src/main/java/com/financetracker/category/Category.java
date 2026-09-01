@@ -23,6 +23,10 @@ public class Category {
     @Column(name = "monthly_budget", precision = 12, scale = 2)
     private BigDecimal monthlyBudget;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "budget_group", length = 20)
+    private BudgetGroup budgetGroup;
+
     @Column(length = 7)
     private String color;
 
@@ -62,6 +66,14 @@ public class Category {
 
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
         this.monthlyBudget = monthlyBudget;
+    }
+
+    public BudgetGroup getBudgetGroup() {
+        return budgetGroup;
+    }
+
+    public void setBudgetGroup(BudgetGroup budgetGroup) {
+        this.budgetGroup = budgetGroup;
     }
 
     public String getColor() {

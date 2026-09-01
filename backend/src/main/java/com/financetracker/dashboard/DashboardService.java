@@ -80,7 +80,7 @@ public class DashboardService {
             overBudget = spent.compareTo(budget) > 0;
         }
         return new CategoryBreakdownDto(category.getId(), category.getName(), category.getType(),
-                category.getColor(), spent, budget, percentUsed, overBudget);
+                category.getColor(), spent, budget, category.getBudgetGroup(), percentUsed, overBudget);
     }
 
     private BigDecimal sum(List<Transaction> transactions, java.util.function.Predicate<Transaction> filter) {

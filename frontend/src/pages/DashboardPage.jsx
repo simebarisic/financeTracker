@@ -105,7 +105,7 @@ export default function DashboardPage() {
               <div className="card-header">
                 <h2 className="card-title">Budgets this month</h2>
               </div>
-              <BudgetList categories={summary.categories} />
+              <BudgetList categories={summary.categories} totalIncome={summary.totalIncome} />
             </div>
           </div>
 
