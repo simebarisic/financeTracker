@@ -1,0 +1,27 @@
+# Overlay za GitHub Actions (.github/workflows/k8s.yml): efemerni k3d klaster
+# bez Ingressa/TLS-a, smoke test ide preko kubectl port-forward.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: finance-tracker
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+# Image builda CI job i uvozi ga u k3d.
+images:
+  - name: finance-tracker-backend
+    newName: finance-tracker-backend
+    newTag: ci
+  - name: finance-tracker-frontend
+    newName: finance-tracker-frontend
+    newTag: ci
+
+# Testne vrijednosti - CI klaster se briše na kraju joba.
+secretGenerator:
+  - name: finance-tracker-secrets
+    literals:
+      - POSTGRES_PASSWORD=ci-test-lozinka-0123456789
+      - JWT_SECRET=ci-test-jwt-secret-0123456789abcdef0123456789abcdef
+      - APP_ADMIN_PASSWORD=ci-test-admin

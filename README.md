@@ -115,3 +115,14 @@ handling).
   start with a JWT secret shorter than 32 characters.
 - If you expose this beyond `localhost`, put it behind HTTPS (e.g. a reverse proxy) — the app itself
   serves plain HTTP.
+
+## Kubernetes (lokalno, za učenje)
+
+Kustomize manifesti su u `k8s/`, lokalni k3d klaster se diže jednom naredbom:
+
+```bash
+brew install k3d kubectl      # jednom
+./scripts/k8s-local.sh up
+```
+
+Detalji (struktura, adrese, specifičnosti ovog projekta, CI): [`k8s/README.md`](k8s/README.md).
