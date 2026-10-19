@@ -1,11 +1,9 @@
-# Ingress preko Traefika (ugrađen u k3s/k3d). cert-manager vidi anotaciju,
-# sam kreira Certificate i sprema ga u secret "finance-tracker-tls".
+# Ingress preko Traefika (ugrađen u k3s/k3d). TLS certifikat u secretu
+# "finance-tracker-tls" izdaje cert-manager prema certificate.yaml.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: finance-tracker
-  annotations:
-    cert-manager.io/issuer: "local-ca"
 spec:
   ingressClassName: traefik
   tls:

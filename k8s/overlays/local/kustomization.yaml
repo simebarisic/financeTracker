@@ -10,6 +10,7 @@ resources:
   - ../../base
   - tls-issuer.yaml
   - ingress.yaml
+  - certificate.yaml
 
 # Image se builda lokalno i uvozi u k3d (k3d image import) - nema pulla iz registryja.
 images:
