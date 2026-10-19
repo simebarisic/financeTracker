@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMonth } from '../context/MonthContext.jsx'
 import MonthPicker from '../components/MonthPicker.jsx'
 import TransactionForm from '../components/TransactionForm.jsx'
@@ -27,6 +27,8 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('ALL')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [groupByCategory, setGroupByCategory] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [importMessage, setImportMessage] = useState('')
@@ -48,12 +50,50 @@ export default function TransactionsPage() {
     load()
   }, [load])
 
+  // Categories offered in the dropdown follow the type filter (Income/Expenses)
+  const categoryOptions = useMemo(() => {
+    const list = filter === 'INCOME' || filter === 'EXPENSE'
+      ? categories.filter((c) => c.type === filter)
+      : categories
+    return [...list].sort((a, b) => a.name.localeCompare(b.name))
+  }, [categories, filter])
+
+  function changeFilter(key) {
+    setFilter(key)
+    if ((key === 'INCOME' || key === 'EXPENSE') && categoryFilter !== 'ALL') {
+      const cat = categories.find((c) => String(c.id) === categoryFilter)
+      if (cat && cat.type !== key) setCategoryFilter('ALL')
+    }
+  }
+
   const filtered = transactions.filter((t) => {
+    if (categoryFilter !== 'ALL' && String(t.categoryId) !== categoryFilter) return false
     if (filter === 'INCOME') return t.type === 'INCOME'
     if (filter === 'EXPENSE') return t.type === 'EXPENSE'
     if (filter === 'UNPAID') return !t.paid
     return true
   })
+
+  // Grouped view: one section per category with count and net subtotal
+  const groups = useMemo(() => {
+    const map = new Map()
+    for (const t of filtered) {
+      const key = t.categoryId ?? 'none'
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: t.categoryName || 'Uncategorized',
+          color: t.categoryColor || '#98a2b3',
+          items: [],
+          total: 0,
+        })
+      }
+      const g = map.get(key)
+      g.items.push(t)
+      g.total += (t.type === 'INCOME' ? 1 : -1) * Number(t.amount)
+    }
+    return [...map.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+  }, [filtered])
 
   function openAdd() {
     setEditing(null)
@@ -123,6 +163,44 @@ export default function TransactionsPage() {
     }
   }
 
+  function renderRow(t) {
+    return (
+      <tr key={t.id}>
+        <td>{t.transactionDate}</td>
+        <td>{t.description}</td>
+        <td>
+          <span className="badge" style={{ background: '#f2f4f7', color: '#344054' }}>
+            <span className="badge-dot" style={{ background: t.categoryColor || '#98a2b3' }} />
+            {t.categoryName}
+          </span>
+        </td>
+        <td>
+          {t.fixed && <span className="badge badge-fixed">Fixed</span>}
+          {!t.fixed && t.type === 'EXPENSE' && <span className="badge badge-fixed">Variable</span>}
+        </td>
+        <td>
+          <button
+            className={`badge ${t.paid ? 'badge-paid' : 'badge-unpaid'}`}
+            style={{ border: 'none', cursor: 'pointer' }}
+            onClick={() => handleTogglePaid(t)}
+            title="Click to toggle"
+          >
+            {t.paid ? (t.type === 'INCOME' ? 'Received' : 'Paid') : 'Unpaid'}
+          </button>
+        </td>
+        <td className={`amount-cell ${t.type === 'INCOME' ? 'income' : 'expense'}`} style={{ textAlign: 'right' }}>
+          {t.type === 'INCOME' ? '+' : '−'}{formatMoney(t.amount)}
+        </td>
+        <td>
+          <div className="row-actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)}>Edit</button>
+            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(t)}>Delete</button>
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -142,11 +220,31 @@ export default function TransactionsPage() {
             <button
               key={f.key}
               className={`filter-pill ${filter === f.key ? 'active' : ''}`}
-              onClick={() => setFilter(f.key)}
+              onClick={() => changeFilter(f.key)}
             >
               {f.label}
             </button>
           ))}
+          <select
+            className={`filter-pill ${categoryFilter !== 'ALL' ? 'active' : ''}`}
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filter by category"
+          >
+            <option value="ALL">All categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            className={`filter-pill ${groupByCategory ? 'active' : ''}`}
+            onClick={() => setGroupByCategory((v) => !v)}
+            title="Group transactions by category"
+          >
+            Group by category
+          </button>
           <div className="spacer" />
           <input
             type="file"
@@ -185,41 +283,24 @@ export default function TransactionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.transactionDate}</td>
-                    <td>{t.description}</td>
-                    <td>
-                      <span className="badge" style={{ background: '#f2f4f7', color: '#344054' }}>
-                        <span className="badge-dot" style={{ background: t.categoryColor || '#98a2b3' }} />
-                        {t.categoryName}
-                      </span>
-                    </td>
-                    <td>
-                      {t.fixed && <span className="badge badge-fixed">Fixed</span>}
-                      {!t.fixed && t.type === 'EXPENSE' && <span className="badge badge-fixed">Variable</span>}
-                    </td>
-                    <td>
-                      <button
-                        className={`badge ${t.paid ? 'badge-paid' : 'badge-unpaid'}`}
-                        style={{ border: 'none', cursor: 'pointer' }}
-                        onClick={() => handleTogglePaid(t)}
-                        title="Click to toggle"
-                      >
-                        {t.paid ? (t.type === 'INCOME' ? 'Received' : 'Paid') : 'Unpaid'}
-                      </button>
-                    </td>
-                    <td className={`amount-cell ${t.type === 'INCOME' ? 'income' : 'expense'}`} style={{ textAlign: 'right' }}>
-                      {t.type === 'INCOME' ? '+' : '−'}{formatMoney(t.amount)}
-                    </td>
-                    <td>
-                      <div className="row-actions">
-                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)}>Edit</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(t)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {groupByCategory
+                  ? groups.map((g) => (
+                      <Fragment key={g.key}>
+                        <tr className="group-row">
+                          <td colSpan={5}>
+                            <span className="badge-dot" style={{ background: g.color }} />
+                            <strong>{g.name}</strong>
+                            <span className="group-count">{g.items.length} transaction{g.items.length === 1 ? '' : 's'}</span>
+                          </td>
+                          <td className={`amount-cell ${g.total >= 0 ? 'income' : 'expense'}`} style={{ textAlign: 'right' }}>
+                            {g.total >= 0 ? '+' : '−'}{formatMoney(Math.abs(g.total))}
+                          </td>
+                          <td></td>
+                        </tr>
+                        {g.items.map(renderRow)}
+                      </Fragment>
+                    ))
+                  : filtered.map(renderRow)}
               </tbody>
             </table>
           </div>

@@ -1,0 +1,18 @@
+import "node:module";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+var vite_config_default = defineConfig({
+	plugins: [react()],
+	server: {
+		host: true,
+		port: 5173,
+		proxy: { "/api": {
+			target: process.env.VITE_API_PROXY_TARGET || "http://localhost:8080",
+			changeOrigin: true
+		} }
+	}
+});
+//#endregion
+export { vite_config_default as default };
+
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidml0ZS5jb25maWcuanMiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiL3Nlc3Npb25zL3Jjdy0wMXNnM2QydzFlanZvZmZ0cXl3ZWZ0cTcvbW50L2ZpbmFuY2UtdHJhY2tlci9mcm9udGVuZC92aXRlLmNvbmZpZy5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgcmVhY3QgZnJvbSAnQHZpdGVqcy9wbHVnaW4tcmVhY3QnXG5pbXBvcnQgeyBkZWZpbmVDb25maWcgfSBmcm9tICd2aXRlJ1xuXG4vLyBodHRwczovL3ZpdGUuZGV2L2NvbmZpZy9cbmV4cG9ydCBkZWZhdWx0IGRlZmluZUNvbmZpZyh7XG4gIHBsdWdpbnM6IFtyZWFjdCgpXSxcbiAgc2VydmVyOiB7XG4gICAgaG9zdDogdHJ1ZSxcbiAgICBwb3J0OiA1MTczLFxuICAgIHByb3h5OiB7XG4gICAgICAnL2FwaSc6IHtcbiAgICAgICAgdGFyZ2V0OiBwcm9jZXNzLmVudi5WSVRFX0FQSV9QUk9YWV9UQVJHRVQgfHwgJ2h0dHA6Ly9sb2NhbGhvc3Q6ODA4MCcsXG4gICAgICAgIGNoYW5nZU9yaWdpbjogdHJ1ZSxcbiAgICAgIH0sXG4gICAgfSxcbiAgfSxcbn0pXG4iXSwibWFwcGluZ3MiOiI7OztBQUlBLElBQUEsc0JBQWUsYUFBYTtDQUMxQixTQUFTLENBQUMsTUFBTSxDQUFDO0NBQ2pCLFFBQVE7RUFDTixNQUFNO0VBQ04sTUFBTTtFQUNOLE9BQU8sRUFDTCxRQUFRO0dBQ04sUUFBUSxRQUFRLElBQUkseUJBQXlCO0dBQzdDLGNBQWM7RUFDaEIsRUFDRjtDQUNGO0FBQ0YsQ0FBQyJ9
