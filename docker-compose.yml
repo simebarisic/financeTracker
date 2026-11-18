@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-financetracker}
       POSTGRES_USER: ${POSTGRES_USER:-financetracker}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financetracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,11 +25,11 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-financetracker}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-financetracker}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-financetracker}
-      JWT_SECRET: ${JWT_SECRET:-change-this-super-secret-key-please-override-in-production-min-32-bytes}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-1440}
       APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-admin}
-      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-changeme123}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?Set APP_ADMIN_PASSWORD in .env (see .env.example)}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3020}
     depends_on:
       db:

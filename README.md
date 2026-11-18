@@ -29,8 +29,8 @@ docker compose up --build -d
 ```
 
 Then open **http://localhost:3020** and log in with the `APP_ADMIN_USERNAME` / `APP_ADMIN_PASSWORD`
-you set in `.env` (defaults: `admin` / `changeme123` if you didn't change them — change the password
-from the Settings page after your first login).
+you set in `.env` (compose won't start without them). The password is only used to create the admin
+on first startup, so change it later from the Settings page.
 
 The backend API runs on `http://localhost:8020` (this machine only); Postgres is not exposed outside Docker.
 Ports follow the shared local scheme (web 30xx, API 80xx, DB 54xx) and are configurable via `.env`.
