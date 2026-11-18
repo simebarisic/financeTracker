@@ -18,4 +18,4 @@ RUN chmod -R a+rX /usr/share/nginx/html
 
 EXPOSE 80
 HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=5 \
-    CMD wget -qO- http://localhost:80/ || exit 1
+    CMD wget -qO- http://127.0.0.1:80/ || exit 1
