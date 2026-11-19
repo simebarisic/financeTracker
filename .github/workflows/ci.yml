@@ -148,29 +148,45 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # --- Deploy -----------------------------------------------------------------
-  # Disabled until there's a server to deploy to. Once you have one:
-  #  1. Flip `if: false` below to `if: true`.
-  #  2. Add repo secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (Settings > Secrets and
-  #     variables > Actions) for a plain VPS reachable over SSH with Docker installed.
-  #  3. On that server, docker-compose.yml's `build:` entries should be swapped for
-  #     `image: ghcr.io/<owner>/<repo>-backend:latest` / `-frontend:latest` so it pulls the
-  #     images this workflow just published instead of rebuilding from source.
-  # If you deploy to a platform instead (Railway, Fly.io, Render, etc.), replace this job's
-  # steps with that platform's deploy action/CLI — the docker-publish job above already gives
-  # you versioned images to point it at.
-  deploy:
+  # GitOps: upiše novi tag u apps-config (apps/finance-tracker/envs/dev), a Argo CD ga deploya na DEV.
+  # Pristup apps-configu: GitHub App (varijabla CONFIG_APP_CLIENT_ID + secret CONFIG_APP_PRIVATE_KEY).
+  # Dok varijabla ne postoji, job se preskače.
+  update-dev:
+    name: Novi tag na DEV (apps-config)
     needs: docker-publish
+    if: github.ref == 'refs/heads/main' && vars.CONFIG_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
-    if: false
+    timeout-minutes: 5
+    concurrency:
+      group: apps-config-finance-tracker-dev
+      cancel-in-progress: false
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1
+      - name: Token za apps-config (GitHub App, vrijedi 1 h)
+        id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd /path/to/finance-tracker
-            docker compose pull
-            docker compose up -d
+          client-id: ${{ vars.CONFIG_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CONFIG_APP_PRIVATE_KEY }}
+          owner: simebarisic
+          repositories: apps-config
+
+      - name: Checkout apps-config
+        uses: actions/checkout@v7
+        with:
+          repository: simebarisic/apps-config
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Upiši tag i pushaj
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"   # isti tag koji je build objavio na GHCR
+          ./scripts/set-tag.sh finance-tracker dev "$TAG"
+          if git diff --quiet; then echo "DEV je već na $TAG"; exit 0; fi
+          git config user.name "finance-tracker-ci"
+          git config user.email "finance-tracker-ci@users.noreply.github.com"
+          git commit -qam "finance-tracker: DEV -> $TAG ($GITHUB_SHA)"
+          # Ako je netko u međuvremenu pushao u apps-config, povuci i pokušaj ponovno.
+          for i in 1 2 3; do
+            git push && exit 0
+            git pull --rebase
+          done
+          exit 1
